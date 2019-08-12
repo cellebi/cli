@@ -4,51 +4,30 @@ import pub.cellebi.option.Option;
 import pub.cellebi.option.OptionSet;
 import pub.cellebi.option.type.*;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.function.Supplier;
 
+/**
+ * @author makhocheung
+ */
 public abstract class Command implements Action {
 
-    static final Set<Class<? extends Command>> CLASS_SET = new HashSet<>();
-
+    private final OptionSet options;
     protected String name;
-    protected final OptionSet options;
+    protected Command parent;
 
 
     protected Command() {
         CliCommand cliCommand = this.getClass().getAnnotation(CliCommand.class);
-        String name = cliCommand.name();
+        name = cliCommand.name();
         String usage = cliCommand.usage();
         options = new OptionSet(name, usage);
         initOptions();
     }
 
-    public void doExecute(List<String> args) {
-        options.parse(args);
-        before();
-        execute(args);
-        after();
-    }
-
-
-    public String getName() {
-        return name;
-    }
-
-    public Command setName(String name) {
-        this.name = name;
-        return this;
-    }
-
     protected Command parse(List<String> args) {
         options.parse(args);
         return this;
-    }
-
-    protected void help() {
-        System.out.println(options.usage());
     }
 
     protected Command byteOption(String name, byte value, String usage) {
@@ -96,81 +75,145 @@ public abstract class Command implements Action {
         return this;
     }
 
-    protected ByteOption byteOption(String name) {
+    public void doExecute(List<String> params) {
+        before();
+        execute(params);
+        after();
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public Command parent() {
+        return this.parent;
+    }
+
+    public Command global() {
+        Command command = this;
+        while (command.parent != command) {
+            command = command.parent;
+        }
+        return command;
+    }
+
+    public Command findParent(Class<? extends Command> clazz) {
+        Command target = this;
+        Command temp = this.parent;
+        while (temp != this) {
+            if (temp.getClass().isInstance(clazz)) {
+                target = temp;
+                break;
+            }
+            temp = temp.parent;
+        }
+        return target;
+    }
+
+    public boolean hasSubCommands() {
+        Class<? extends Command> clazz = this.getClass();
+        Action.CliCommand cliCommand = clazz.getAnnotation(Action.CliCommand.class);
+        return cliCommand.subCommands().length > 0;
+    }
+
+    public void help() {
+        System.out.println(options.usage());
+    }
+
+    public Command getParent() {
+        return parent;
+    }
+
+    public void setParent(Command parent) {
+        if (this.parent != null) {
+            throw new IllegalStateException();
+        }
+        this.parent = parent;
+    }
+
+    public String peek() {
+        return options.peek();
+    }
+
+    public ByteOption byteOption(String name) {
         return options.getByteOption(name);
     }
 
-    protected ShortOption shortOption(String name) {
+    public ShortOption shortOption(String name) {
         return options.getShortOption(name);
     }
 
-    protected IntOption intOption(String name) {
+    public IntOption intOption(String name) {
         return options.getIntOption(name);
     }
 
-    protected LongOption longOption(String name) {
+    public LongOption longOption(String name) {
         return options.getLongOption(name);
     }
 
-    protected FloatOption floatOption(String name) {
+    public FloatOption floatOption(String name) {
         return options.getFloatOption(name);
     }
 
-    protected DoubleOption doubleOption(String name) {
+    public DoubleOption doubleOption(String name) {
         return options.getDoubleOption(name);
     }
 
-    protected BoolOption boolOption(String name) {
+    public BoolOption boolOption(String name) {
         return options.getBoolOption(name);
     }
 
-    protected StringOption stringOption(String name) {
+    public StringOption stringOption(String name) {
         return options.getStringOption(name);
     }
 
-    protected <T extends Option> T customOption(String name, Class<T> type) {
+    public <T extends Option> T customOption(String name, Class<T> type) {
         return options.getOptionByType(name, type);
     }
 
-    protected byte byteVal(String name) {
+    public byte byteVal(String name) {
         return byteOption(name).getValue();
     }
 
-    protected short shortVal(String name) {
+    public short shortVal(String name) {
         return shortOption(name).getValue();
     }
 
-    protected int intVal(String name) {
+    public int intVal(String name) {
         return intOption(name).getValue();
     }
 
-    protected long longVal(String name) {
+    public long longVal(String name) {
         return longOption(name).getValue();
     }
 
-    protected double doubleVal(String name) {
+    public double doubleVal(String name) {
         return doubleOption(name).getValue();
     }
 
-    protected float floatVal(String name) {
+    public float floatVal(String name) {
         return floatOption(name).getValue();
     }
 
-    protected boolean boolVal(String name) {
+    public boolean boolVal(String name) {
         return boolOption(name).getValue();
     }
 
-    protected String stringVal(String name) {
+    public String stringVal(String name) {
         return stringOption(name).getValue();
     }
 
-    protected <T extends Option, E> E customVal(String name, Class<T> optionType, Class<E> valueType) {
+    public <T extends Option, E> E customVal(String name, Class<T> optionType, Class<E> valueType) {
         return valueType.cast(customOption(name, optionType).getValue());
     }
 
     /**
-     * define the your command options
+     * define the your command options by overwriting this method
+     *
+     * {@code void initOptions(){
+     *    boolOption("help",false,"xxx");
+     * }}
      */
-    void initOptions() {
+    protected void initOptions() {
     }
 }

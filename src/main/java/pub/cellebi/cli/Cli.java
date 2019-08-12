@@ -1,6 +1,5 @@
 package pub.cellebi.cli;
 
-import pub.cellebi.option.OptionSet;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -8,35 +7,30 @@ import java.util.List;
 
 public final class Cli {
 
-    /**
-     * 注册你的命令类
-     *
-     * @param clazz 注册的类
-     */
 
-    static {
-        register(DefaultHelp.class);
+    public static void run(Class<? extends Command> globalClass, String[] arguments) {
+        List<String> argsWithOptions = new ArrayList<>(Arrays.asList(arguments));
+        Command target = parseCommandLine(globalClass, argsWithOptions);
+        target.doExecute(argsWithOptions);
     }
 
-    public static void register(Class<? extends Command> clazz) {
-        Command.CLASS_SET.add(clazz);
-    }
-
-    public static void register(Class<Command>[] clazzArray) {
-        Command.CLASS_SET.addAll(Arrays.asList(clazzArray));
-    }
-
-    public static void run(String[] arguments) {
-        List<String> args = new ArrayList<>(Arrays.asList(arguments));
-        Command global = Commands.createGlobal();
+    private static Command parseCommandLine(Class<? extends Command> globalClass, List<String> args) {
+        Command root = Commands.createByTarget(globalClass).parse(args), target = root;
+        root.parent = target;
         if (args.isEmpty()) {
-            global.help();
+            return target;
         }
-        if (args.get(0).startsWith("-")) {
-            //firstly execute global command
-            global.doExecute(args);
+        while (!args.isEmpty() && target.hasSubCommands()) {
+            String cmd = args.get(0);
+            Command command = Commands.create(target.getClass(), cmd);
+            if (command == null) {
+                return target;
+            }
+            args.remove(0);
+            command.parse(args);
+            command.parent = target;
+            target = command;
         }
-        String cmd = args.remove(0);
-        Commands.create(cmd).doExecute(args);
+        return target;
     }
 }

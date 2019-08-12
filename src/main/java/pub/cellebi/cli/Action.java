@@ -20,13 +20,14 @@ public interface Action {
     @interface CliCommand {
         String name() default "";
 
-        boolean isGlobal() default false;
-
         String usage() default "";
+
+        Class<? extends Command>[] subCommands() default {};
+
     }
 
     @Target(ElementType.METHOD)
-    @interface ExceptionHandler{
+    @interface ExceptionHandler {
 
     }
 
